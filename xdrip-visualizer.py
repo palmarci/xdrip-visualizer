@@ -2,14 +2,14 @@ from plotly.subplots import make_subplots
 import argparse
 import datetime
 import io
+import numpy as np
 import os
 import plotly.express as px
 import plotly.graph_objs as go
+import pprint
 import sqlite3
 import tempfile
 import zipfile
-import pprint
-import numpy as np
 
 class Measurement:
 	def __init__(self, id, value, timestamp):
@@ -22,8 +22,6 @@ class Measurement:
 
 	def __lt__(self, other):
 		 return self.timestamp < other.timestamp
-
-
 
 
 class Insulin:
@@ -173,9 +171,6 @@ def create_graphs(data, last_days, min_long_insulin, max_long_insulin, min_accep
 	with open('xdrip_database.html', 'w') as html_file:
 		html_file.write(html_document)
 
-
-
-
 def load_data(zip_path):
 	try:
 		# Open the ZIP file and extract the SQLite file to a temporary location
@@ -194,36 +189,51 @@ def load_data(zip_path):
 					conn = sqlite3.connect(tmp_file_path)
 					cursor = conn.cursor()
 
-					# measurements
-					cursor.execute("SELECT _id, calculated_value, timestamp FROM BgReadings")
 					measurements = []
+
+					# bg measurements
+					cursor.execute("SELECT _id, calculated_value, timestamp FROM BgReadings")
 					for row in cursor.fetchall():
 						id, value, millis_timestamp = row
 						seconds_timestamp = millis_timestamp / 1000.0  # Convert milliseconds to seconds
 						timestamp = datetime.datetime.fromtimestamp(seconds_timestamp)
 						measurements.append(Measurement(id, round(float(int(value) / 18), 1), timestamp))
 
+					# manual readings
+					cursor.execute("SELECT _id, mgdl, timestamp FROM BloodTest")
+					for row in cursor.fetchall():
+						id, value, millis_timestamp = row
+						seconds_timestamp = millis_timestamp / 1000.0  # Convert milliseconds to seconds
+						timestamp = datetime.datetime.fromtimestamp(seconds_timestamp)
+						manual = Measurement(id, round(float(int(value) / 18), 1), timestamp)
+					#	print(f'adding manual: {manual}')
+						measurements.append(manual)
+
+					#print('wtf')
+
 					# treatments and notes
 					cursor.execute("SELECT _id, timestamp, insulin, notes FROM Treatments")
 					treatments = []
 					notes = []
-					custom_parsed_treatments = [] 
+				#	custom_parsed_treatments = [] 
 					for row in cursor.fetchall():
 						id, millis_timestamp, insulin, note_text = row
 						seconds_timestamp = millis_timestamp / 1000.0  # Convert milliseconds to seconds
 						timestamp = datetime.datetime.fromtimestamp(seconds_timestamp)
 
 						if note_text is not None:
-							try:
-								note_int = int(note_text)
-								if note_int != 0:
-									if args.min_long_insulin <= note_int <= args.max_long_insulin:
-										custom_parsed_treatments.append(Insulin(id, timestamp, note_int, True))
-									else:
-										custom_parsed_treatments.append(Insulin(id, timestamp, note_int, False))
-							except ValueError:
-								print("Got one note")
-								notes.append(Note(id, timestamp, note_text))
+							notes.append(Note(id, timestamp, note_text))
+
+							# try:
+							# 	note_int = int(note_text)
+							# 	if note_int != 0:
+							# 		if args.min_long_insulin <= note_int <= args.max_long_insulin:
+							# 			custom_parsed_treatments.append(Insulin(id, timestamp, note_int, True))
+							# 		else:
+							# 			custom_parsed_treatments.append(Insulin(id, timestamp, note_int, False))
+							# except ValueError:
+							# 	print("Got one note")
+							# 	notes.append(Note(id, timestamp, note_text))
 
 						if insulin is not None and insulin != 0:
 							if args.min_long_insulin <= insulin <= args.max_long_insulin:
@@ -232,12 +242,12 @@ def load_data(zip_path):
 								treatments.append(Insulin(id, timestamp, insulin, False))
 
 
-					# i swear to god here was a python bug when i couldnt append to the main treatment list wtfff ?????
-					for i in custom_parsed_treatments:
-						treatments.append(i)
+					# i swear to god there was a python bug when i couldnt append to the main treatment list like wtfff ?????
+				#	for i in custom_parsed_treatments:
+				#		treatments.append(i)
 
-					# Adjust insulin treatments
 					adjusted_treatments = adjust_insulin_treatments(treatments)
+					measurements.sort()
 
 					# Close the database connection and remove the temporary file
 					conn.close()
@@ -279,11 +289,11 @@ def adjust_insulin_treatments(treatments):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="xDrip Database Visualizer")
 	parser.add_argument("zip_file", help="ZIP file containing the xDrip database (exported from the app)")
-	parser.add_argument("--last-days", type=int, default=30, help="Number of last days to create graphs for (default: 30)")
-	parser.add_argument("--min-long-insulin", type=int, default=12, help="Minimum value for long insulin (default: 12)")
+	parser.add_argument("--last-days", type=int, default=7, help="Number of last days to create graphs for (default: 7)")
+	parser.add_argument("--min-long-insulin", type=int, default=15, help="Minimum value for long insulin (default: 15)")
 	parser.add_argument("--max-long-insulin", type=int, default=20, help="Maximum value for long insulin (default: 20)")
 	parser.add_argument("--min-acceptable-bg", type=float, default=4, help="Minimum acceptable blood sugar value (default: 4)")
-	parser.add_argument("--max-acceptable-bg", type=float, default=12, help="Maximum acceptable blood sugar value (default: 12)")
+	parser.add_argument("--max-acceptable-bg", type=float, default=10, help="Maximum acceptable blood sugar value (default: 10)")
 	parser.add_argument('--no-widescreen', action='store_true', help="Dont generate widescreen graphs")
 
 	args = parser.parse_args()
