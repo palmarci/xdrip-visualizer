@@ -1,5 +1,5 @@
 # xdrip-visualizer
-Python script which generates a HTML page from an exported xDrip database file.
+Python script which generates an HTML page from an exported xDrip database file.
 Example output:
 ![image](https://github.com/palmarci/xdrip-visualizer/assets/20556689/916f1943-9ad6-42b0-8716-09fd5f2edfac)
 
