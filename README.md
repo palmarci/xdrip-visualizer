@@ -4,7 +4,7 @@ Example output:
 ![image](https://github.com/palmarci/xdrip-visualizer/assets/20556689/916f1943-9ad6-42b0-8716-09fd5f2edfac)
 
 ```
-usage: xdrip graph.py [-h] [--last-days LAST_DAYS] [--min-long-insulin MIN_LONG_INSULIN] [--max-long-insulin MAX_LONG_INSULIN] [--min-acceptable-bg MIN_ACCEPTABLE_BG]
+usage: xdrip-visualizer.py [-h] [--last-days LAST_DAYS] [--min-long-insulin MIN_LONG_INSULIN] [--max-long-insulin MAX_LONG_INSULIN] [--min-acceptable-bg MIN_ACCEPTABLE_BG]
                       [--max-acceptable-bg MAX_ACCEPTABLE_BG] [--no-widescreen]
                       zip_file
 
